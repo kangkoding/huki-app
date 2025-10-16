@@ -1,67 +1,69 @@
 import { Link } from "react-router-dom";
-import { Search, FileText, BookOpen, Users, MessageSquare } from "lucide-react";
+import { Search, History, BookOpen, Users, MessageSquare } from "lucide-react";
 import { useFirebaseAuth } from "@/hooks/useFirebaseAuth";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/services/firebase";
+import { supabase } from "@/services/supabaseClient";
+import NotificationsBanner from "@/components/NotificationsBanner";
 
 export default function Home() {
   const { user } = useFirebaseAuth();
   const [displayName, setDisplayName] = useState("");
   const [loadingName, setLoadingName] = useState(true);
+  const [articles, setArticles] = useState([]);
 
-  // 🧠 Ambil nama user (localStorage → Firestore)
   useEffect(() => {
-    async function fetchName() {
-      if (user) {
-        const localName = localStorage.getItem("userName");
-        if (localName) {
-          setDisplayName(localName);
-          setLoadingName(false);
-          return;
-        }
-
-        try {
-          const snap = await getDoc(doc(db, "users", user.uid));
-          if (snap.exists()) {
-            const data = snap.data();
-            const name =
-              data?.namaLengkap || data?.name || data?.email || "Pengguna";
-            setDisplayName(name);
-
-            if (data?.namaLengkap) {
-              localStorage.setItem("userName", data.namaLengkap);
-            }
-          } else {
-            setDisplayName(user.email || "Pengguna");
-          }
-        } catch (err) {
-          console.error("Gagal fetch nama user:", err);
-          setDisplayName(user.email || "Pengguna");
-        } finally {
-          setLoadingName(false);
-        }
-      } else {
-        setLoadingName(false);
-      }
-    }
-
     fetchName();
   }, [user]);
 
-  // 🌀 Listener untuk update nama real-time dari Profile.jsx
   useEffect(() => {
-    function handleStorageChange(e) {
-      if (e.key === "userName") {
-        setDisplayName(e.newValue || "Pengguna");
-      }
+    fetchArticles();
+    // realtime listener artikel
+    const channel = supabase
+      .channel("home-articles")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "articles" },
+        fetchArticles
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  async function fetchName() {
+    if (!user) {
+      setLoadingName(false);
+      return;
     }
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
+    try {
+      if (user.displayName) {
+        setDisplayName(user.displayName);
+      } else {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          const data = snap.data();
+          setDisplayName(data?.name || data?.email || "Pengguna");
+        } else {
+          setDisplayName(user.email || "Pengguna");
+        }
+      }
+    } finally {
+      setLoadingName(false);
+    }
+  }
+
+  async function fetchArticles() {
+    const { data, error } = await supabase
+      .from("articles")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (!error) setArticles(data || []);
+  }
 
   return (
     <div className="pb-20">
@@ -85,7 +87,7 @@ export default function Home() {
       </div>
 
       {/* Search Bar */}
-      <div className="px-4 -mt-5">
+      {/* <div className="px-4 -mt-5">
         <div className="bg-white rounded-xl shadow flex items-center gap-2 px-4 py-2">
           <Search className="text-gray-400" size={20} />
           <input
@@ -94,29 +96,34 @@ export default function Home() {
             className="flex-1 outline-none text-sm"
           />
         </div>
+      </div> */}
+
+      {/* Banner Notifikasi */}
+      <div className="px-4 mt-4">
+        <NotificationsBanner role="user" />
       </div>
 
       {/* Menu Grid */}
-      <div className="grid grid-cols-4 gap-4 px-4 mt-6">
-        <Link to="/konsultasi" className="flex flex-col items-center">
+      <div className="grid grid-cols-4 gap-4 px-4 mt-4">
+        <Link to="/pilih-bidang" className="flex flex-col items-center">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
             <MessageSquare className="text-[#cc0000]" size={28} />
           </div>
           <p className="text-xs mt-2 text-gray-700">Konsultasi</p>
         </Link>
 
-        <Link to="/dokumen" className="flex flex-col items-center">
+        <Link to="/riwayat-transaksi" className="flex flex-col items-center">
           <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
-            <FileText className="text-blue-500" size={28} />
+            <History className="text-blue-500" size={28} />
           </div>
-          <p className="text-xs mt-2 text-gray-700">Dokumen</p>
+          <p className="text-xs mt-2 text-gray-700">Transaksi</p>
         </Link>
 
         <Link to="/artikel" className="flex flex-col items-center">
           <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
             <BookOpen className="text-green-500" size={28} />
           </div>
-          <p className="text-xs mt-2 text-gray-700">Edukasi</p>
+          <p className="text-xs mt-2 text-gray-700">Artikel</p>
         </Link>
 
         <Link to="/forum" className="flex flex-col items-center">
@@ -138,27 +145,29 @@ export default function Home() {
       </div>
 
       {/* Artikel Terbaru */}
-      <div className="px-4 mt-6">
+      <div className="px-4 mt-6 mb-8">
         <h2 className="font-bold text-gray-800 mb-3">Artikel Terbaru</h2>
         <div className="space-y-3">
-          <Link
-            to="/artikel/1"
-            className="block p-4 bg-white rounded-xl shadow hover:shadow-md transition"
-          >
-            <h3 className="font-semibold text-gray-800 text-sm">
-              Panduan Hukum Usaha Mikro
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">21 Sep 2025</p>
-          </Link>
-          <Link
-            to="/artikel/2"
-            className="block p-4 bg-white rounded-xl shadow hover:shadow-md transition"
-          >
-            <h3 className="font-semibold text-gray-800 text-sm">
-              Cara Membuat Kontrak Sederhana
-            </h3>
-            <p className="text-xs text-gray-500 mt-1">18 Sep 2025</p>
-          </Link>
+          {articles.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Belum ada artikel untuk saat ini.
+            </p>
+          ) : (
+            articles.map((article) => (
+              <Link
+                key={article.id}
+                to={`/artikel/${article.id}`}
+                className="block p-4 bg-white rounded-xl shadow hover:shadow-md transition"
+              >
+                <h3 className="font-semibold text-gray-800 text-sm">
+                  {article.title}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(article.created_at).toLocaleDateString()}
+                </p>
+              </Link>
+            ))
+          )}
         </div>
       </div>
     </div>

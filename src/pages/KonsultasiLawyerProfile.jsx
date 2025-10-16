@@ -9,7 +9,11 @@ export default function KonsultasiLawyerProfile() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("lawyers").select("*").eq("id", id).single();
+      const { data } = await supabase
+        .from("lawyers")
+        .select("*")
+        .eq("id", id)
+        .single();
       setLawyer(data || null);
     })();
   }, [id]);
@@ -23,7 +27,7 @@ export default function KonsultasiLawyerProfile() {
     <div className="p-4 pb-24">
       <div className="flex gap-4">
         <img
-          src={lawyer.avatar_url || "https://via.placeholder.com/100"}
+          src={lawyer.avatar_url || "https://placehold.co/100"}
           alt={lawyer.name}
           className="w-20 h-20 rounded-full object-cover"
         />
@@ -32,14 +36,18 @@ export default function KonsultasiLawyerProfile() {
           <p className="text-sm text-gray-500">{lawyer.firm}</p>
           <p className="text-sm mt-2">{lawyer.bio}</p>
           <p className="text-xs text-gray-600 mt-1">
-            ⭐ {lawyer.rating || 0} • {lawyer.clients_served || 0} klien • {lawyer.experience_years || 0} thn
+            ⭐ {lawyer.rating || 0} • {lawyer.clients_served || 0} klien •{" "}
+            {lawyer.experience_years || 0} thn
           </p>
         </div>
       </div>
 
       <div className="mt-3 text-sm">
         {(lawyer.specialties || []).map((s) => (
-          <span key={s} className="inline-block mr-1 mb-1 px-2 py-0.5 bg-gray-100 rounded">
+          <span
+            key={s}
+            className="inline-block mr-1 mb-1 px-2 py-0.5 bg-gray-100 rounded"
+          >
             {s}
           </span>
         ))}

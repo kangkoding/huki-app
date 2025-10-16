@@ -17,57 +17,58 @@ export default function Login() {
   const navigate = useNavigate();
 
   const redirectByRole = (role) => {
-    switch (role) {
-      case "admin":
-        navigate("/admin/users", { replace: true });
-        break;
-      case "lawyer":
-        navigate("/lawyer", { replace: true });
-        break;
-      default:
-        navigate("/home", { replace: true });
-        break;
+    if (role === "admin") navigate("/admin/dashboard");
+    else if (role === "lawyer") navigate("/lawyer");
+    else navigate("/home");
+  };
+
+  const ensureProfile = async (user) => {
+    // kalau belum ada di profiles → buat role default user
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.uid)
+      .single();
+    if (!data) {
+      await supabase.from("profiles").insert([
+        {
+          id: user.uid,
+          email: user.email,
+          role: "user",
+          name: user.displayName || null,
+        },
+      ]);
+      localStorage.setItem("role", "user");
+      return "user";
+    } else {
+      localStorage.setItem("role", data.role || "user");
+      return data.role || "user";
     }
   };
 
-  const fetchUserRole = async (uid) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", uid)
-      .single();
-
-    if (error) {
-      console.error("❌ Gagal ambil role dari Supabase:", error);
-      return null;
+  const afterAuth = async (user) => {
+    // jaga kompatibilitas: buat doc dasar di Firestore kalau belum ada
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) {
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        createdAt: new Date(),
+      });
     }
-    if (data?.role) {
-      localStorage.setItem("role", data.role);
-      return data.role;
-    }
-    return null;
+    const role = await ensureProfile(user);
+    redirectByRole(role);
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-
     try {
-      const { user } = await signInWithEmailAndPassword(auth, email, password);
-      const role = await fetchUserRole(user.uid);
-      if (role) {
-        setTimeout(() => redirectByRole(role), 50);
-        return;
-      }
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists()) {
-        navigate("/home", { replace: true });
-      } else {
-        navigate("/complete-profile", { replace: true });
-      }
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      await afterAuth(res.user);
     } catch (err) {
-      console.error("Login error:", err);
+      console.error(err);
       setError("Email atau password salah");
     } finally {
       setLoading(false);
@@ -77,26 +78,11 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
-    const provider = new GoogleAuthProvider();
-
     try {
-      const { user } = await signInWithPopup(auth, provider);
-      const role = await fetchUserRole(user.uid);
-      if (role) {
-        setTimeout(() => redirectByRole(role), 50);
-        return;
-      }
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists()) {
-        await setDoc(doc(db, "users", user.uid), {
-          uid: user.uid,
-          email: user.email,
-          createdAt: new Date(),
-        });
-      }
-      navigate("/complete-profile", { replace: true });
+      const res = await signInWithPopup(auth, new GoogleAuthProvider());
+      await afterAuth(res.user);
     } catch (err) {
-      console.error("Google login error:", err);
+      console.error(err);
       setError("Login Google gagal, coba lagi.");
     } finally {
       setLoading(false);
@@ -107,11 +93,9 @@ export default function Login() {
     <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-md">
         <h2 className="text-2xl font-semibold text-center mb-6">Login</h2>
-
         {error && (
           <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
         )}
-
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm mb-1">Email</label>
@@ -123,7 +107,6 @@ export default function Login() {
               required
             />
           </div>
-
           <div>
             <label className="block text-sm mb-1">Password</label>
             <input
@@ -134,16 +117,14 @@ export default function Login() {
               required
             />
           </div>
-
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#cc0000] text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-red-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
           >
             {loading ? "Loading..." : "Login"}
           </button>
         </form>
-
         <div className="mt-6">
           <button
             onClick={handleGoogleLogin}
@@ -158,7 +139,6 @@ export default function Login() {
             <span>{loading ? "Loading..." : "Login dengan Google"}</span>
           </button>
         </div>
-
         <p className="text-sm text-center mt-6">
           Belum punya akun?{" "}
           <Link to="/register" className="text-red-600 hover:underline">

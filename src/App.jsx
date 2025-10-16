@@ -1,11 +1,10 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect } from "react";
+import PageWrapper from "./components/layouts/PageWrapper";
 
-// 🧩 Pages
 import SplashScreen from "./pages/SplashScreen";
 import Onboarding from "./pages/OnBoarding";
 import Home from "./pages/Home";
-import PageWrapper from "./components/layouts/PageWrapper";
 import Auth from "./pages/Auth";
 import PrivateRoute from "./components/PrivateRoute";
 import CompleteProfile from "./pages/CompleteProfile";
@@ -25,41 +24,43 @@ import KonsultasiChat from "./pages/KonsultasiChat";
 import AdminUsers from "./pages/AdminUsers";
 import LawyerPanel from "./pages/LawyerPanel";
 import LawyerChat from "./pages/LawyerChat";
+import AdminArticles from "./pages/AdminArticles";
+import LawyerList from "./pages/LawyerList";
+import LawyerDetail from "./pages/LawyerDetail";
+import PilihBidangHukum from "./pages/PilihBidangHukum";
+import UserChatHistory from "./pages/UserChatHistory";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminLawyers from "./pages/AdminLawyers";
+import AdminNotifications from "./pages/AdminNotifications";
+import LawyerProfile from "./pages/LawyerProfile";
+import PaymentPage from "./pages/PaymentPage";
 
-// 🧠 Hooks & services
 import { useFirebaseAuth } from "./hooks/useFirebaseAuth";
 import { supabase } from "@/services/supabaseClient";
+import AdminTransactions from "./pages/AdminTransactions";
+import RiwayatTransaksi from "./pages/RiwayatTransaksi";
 
-// ✅ Reusable ProtectedRoute
-function ProtectedRoute({ children, requiredRole }) {
+function LawyerRoute({ children }) {
   const { user, loading } = useFirebaseAuth();
   const role = localStorage.getItem("role");
-
   if (loading) return <div className="p-4">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (requiredRole && role !== requiredRole) return <Navigate to="/home" replace />;
-
+  if (role !== "lawyer") return <Navigate to="/home" replace />;
+  return children;
+}
+function AdminRoute({ children }) {
+  const { user, loading } = useFirebaseAuth();
+  const role = localStorage.getItem("role");
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (role !== "admin") return <Navigate to="/home" replace />;
   return children;
 }
 
-import KonsultasiAdvokat from "./pages/KonsultasiAdvokat";
-import KonsultasiLawyerProfile from "./pages/KonsultasiLawyerProfile";
-import KonsultasiCall from "./pages/KonsultasiCall";
-import DokumenTemplates from "./pages/DokumenTemplates";
-import DokumenGenerate from "./pages/DokumenGenerate";
-import DokumenUpload from "./pages/DokumenUpload";
-import DokumenReview from "./pages/DokumenReview";
-import ArtikelDinamisList from "./pages/ArtikelDinamisList";
-import ArtikelDinamisDetail from "./pages/ArtikelDinamisDetail";
-import Bookmarks from "./pages/Bookmarks";
-import ForumByCategory from "./pages/ForumByCategory";
-import AuthPhoneLogin from "./pages/AuthPhoneLogin";
-
 export default function App() {
   const location = useLocation();
-  const { user, loading } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
 
-  // 🧠 Ambil role user dari Supabase saat login / refresh
   useEffect(() => {
     async function fetchRole() {
       if (user) {
@@ -68,15 +69,13 @@ export default function App() {
           .select("role")
           .eq("id", user.uid)
           .single();
-        if (data && !error) {
-          localStorage.setItem("role", data.role);
-        }
+        if (!error && data) localStorage.setItem("role", data.role || "user");
       } else {
         localStorage.removeItem("role");
       }
     }
-    if (!loading) fetchRole();
-  }, [user, loading]);
+    fetchRole();
+  }, [user]);
 
   const hideNavPaths = ["/", "/onboarding", "/login", "/register", "/auth"];
   const hideNav = hideNavPaths.includes(location.pathname);
@@ -88,7 +87,7 @@ export default function App() {
         <Route
           path="/"
           element={
-            <PageWrapper page="splash">
+            <PageWrapper>
               <SplashScreen />
             </PageWrapper>
           }
@@ -96,7 +95,7 @@ export default function App() {
         <Route
           path="/onboarding"
           element={
-            <PageWrapper page="onboarding">
+            <PageWrapper>
               <Onboarding />
             </PageWrapper>
           }
@@ -104,20 +103,19 @@ export default function App() {
         <Route
           path="/auth"
           element={
-            <PageWrapper page="auth">
+            <PageWrapper>
               <Auth />
             </PageWrapper>
           }
         />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
-        {/* User Routes */}
+        {/* User */}
         <Route
           path="/home"
           element={
             <PrivateRoute>
-              <PageWrapper page="home">
+              <PageWrapper>
                 <Home />
               </PageWrapper>
             </PrivateRoute>
@@ -135,7 +133,7 @@ export default function App() {
         <Route
           path="/artikel"
           element={
-            <PageWrapper page="artikel">
+            <PageWrapper>
               <ArtikelList />
             </PageWrapper>
           }
@@ -143,7 +141,7 @@ export default function App() {
         <Route
           path="/artikel/:id"
           element={
-            <PageWrapper page="artikel-detail">
+            <PageWrapper>
               <ArtikelDetail />
             </PageWrapper>
           }
@@ -151,7 +149,7 @@ export default function App() {
         <Route
           path="/dokumen"
           element={
-            <PageWrapper page="dokumen">
+            <PageWrapper>
               <DokumenList />
             </PageWrapper>
           }
@@ -159,7 +157,7 @@ export default function App() {
         <Route
           path="/dokumen/:id"
           element={
-            <PageWrapper page="detail">
+            <PageWrapper>
               <DokumenDetail />
             </PageWrapper>
           }
@@ -167,7 +165,7 @@ export default function App() {
         <Route
           path="/forum"
           element={
-            <PageWrapper page="forum">
+            <PageWrapper>
               <ForumList />
             </PageWrapper>
           }
@@ -175,7 +173,7 @@ export default function App() {
         <Route
           path="/forum/:id"
           element={
-            <PageWrapper page="detail">
+            <PageWrapper>
               <ForumDetail />
             </PageWrapper>
           }
@@ -183,56 +181,167 @@ export default function App() {
         <Route
           path="/forum/new"
           element={
-            <PageWrapper page="forum">
+            <PageWrapper>
               <ForumNew />
             </PageWrapper>
           }
         />
-        <Route path="/konsultasi" element={<KonsultasiList />} />
-        <Route path="/konsultasi/:id" element={<KonsultasiChat />} />
+        <Route
+          path="/konsultasi"
+          element={
+            <PageWrapper>
+              <KonsultasiList />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/konsultasi/:id"
+          element={
+            <PageWrapper>
+              <KonsultasiChat />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/lawyers"
+          element={
+            <PageWrapper>
+              <LawyerList />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/lawyers/:id"
+          element={
+            <PageWrapper>
+              <LawyerDetail />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/pilih-bidang"
+          element={
+            <PageWrapper>
+              <PilihBidangHukum />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/riwayat-chat"
+          element={
+            <PageWrapper>
+              <UserChatHistory />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/riwayat-transaksi"
+          element={
+            <PageWrapper>
+              <RiwayatTransaksi />
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/payment/:lawyerId"
+          element={
+            <PageWrapper>
+              <PaymentPage />
+            </PageWrapper>
+          }
+        />
 
-        {/* Lawyer Routes */}
+        {/* Lawyer */}
         <Route
           path="/lawyer"
           element={
-            <ProtectedRoute requiredRole="lawyer">
-              <LawyerPanel />
-            </ProtectedRoute>
+            <LawyerRoute>
+              <PageWrapper>
+                <LawyerPanel />
+              </PageWrapper>
+            </LawyerRoute>
           }
         />
         <Route
           path="/lawyer/chat/:userId"
           element={
-            <ProtectedRoute requiredRole="lawyer">
-              <LawyerChat />
-            </ProtectedRoute>
+            <LawyerRoute>
+              <PageWrapper>
+                <LawyerChat />
+              </PageWrapper>
+            </LawyerRoute>
+          }
+        />
+        <Route
+          path="/lawyer/profile"
+          element={
+            <LawyerRoute>
+              <PageWrapper>
+                <LawyerProfile />
+              </PageWrapper>
+            </LawyerRoute>
           }
         />
 
-        {/* Admin Routes */}
+        {/* Admin */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/admin/users"
           element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminUsers />
-            </ProtectedRoute>
+            <AdminRoute>
+              <PageWrapper>
+                <AdminUsers />
+              </PageWrapper>
+            </AdminRoute>
           }
         />
-      
-        {/* User-Side extended routes */}
-        <Route path="/login-phone" element={<AuthPhoneLogin />} />
-        <Route path="/konsultasi/advokat" element={<KonsultasiAdvokat />} />
-        <Route path="/konsultasi/advokat/:id" element={<KonsultasiLawyerProfile />} />
-        <Route path="/konsultasi/call/:roomId" element={<KonsultasiCall />} />
-        <Route path="/dokumen/templates" element={<DokumenTemplates />} />
-        <Route path="/dokumen/generate/:type" element={<DokumenGenerate />} />
-        <Route path="/dokumen/upload" element={<DokumenUpload />} />
-        <Route path="/dokumen/review" element={<DokumenReview />} />
-        <Route path="/artikel-dinamis" element={<ArtikelDinamisList />} />
-        <Route path="/artikel-dinamis/:slug" element={<ArtikelDinamisDetail />} />
-        <Route path="/bookmarks" element={<Bookmarks />} />
-        <Route path="/forum/category/:categoryId" element={<ForumByCategory />} />
-
+        <Route
+          path="/admin/articles"
+          element={
+            <AdminRoute>
+              <PageWrapper>
+                <AdminArticles />
+              </PageWrapper>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/lawyers"
+          element={
+            <AdminRoute>
+              <PageWrapper>
+                <AdminLawyers />
+              </PageWrapper>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/notifications"
+          element={
+            <AdminRoute>
+              <PageWrapper>
+                <AdminNotifications />
+              </PageWrapper>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/transactions"
+          element={
+            <AdminRoute>
+              <PageWrapper>
+                <AdminTransactions />
+              </PageWrapper>
+            </AdminRoute>
+          }
+        />
       </Routes>
 
       {!hideNav && <BottomNav />}

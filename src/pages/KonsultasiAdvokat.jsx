@@ -28,9 +28,12 @@ export default function KonsultasiAdvokat() {
     if (filter.specialty) {
       arr = arr.filter((x) => (x.specialties || []).includes(filter.specialty));
     }
-    if (filter.sort === "popular") arr.sort((a, b) => (b.clients_served||0) - (a.clients_served||0));
-    if (filter.sort === "cheap") arr.sort((a, b) => (a.rate_per_session||0) - (b.rate_per_session||0));
-    if (filter.sort === "rating") arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    if (filter.sort === "popular")
+      arr.sort((a, b) => (b.clients_served || 0) - (a.clients_served || 0));
+    if (filter.sort === "cheap")
+      arr.sort((a, b) => (a.rate_per_session || 0) - (b.rate_per_session || 0));
+    if (filter.sort === "rating")
+      arr.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     return arr;
   }, [list, q, filter]);
 
@@ -48,7 +51,9 @@ export default function KonsultasiAdvokat() {
         <select
           className="border rounded-lg px-3 py-2 text-sm"
           value={filter.specialty}
-          onChange={(e) => setFilter((f) => ({ ...f, specialty: e.target.value }))}
+          onChange={(e) =>
+            setFilter((f) => ({ ...f, specialty: e.target.value }))
+          }
         >
           <option value="">Semua Bidang</option>
           <option>Bisnis & kontrak</option>
@@ -77,7 +82,7 @@ export default function KonsultasiAdvokat() {
           >
             <div className="flex gap-3">
               <img
-                src={l.avatar_url || "https://via.placeholder.com/80"}
+                src={l.avatar_url || "https://placehold.co/80"}
                 alt={l.name}
                 className="w-16 h-16 rounded-full object-cover"
               />
@@ -86,13 +91,17 @@ export default function KonsultasiAdvokat() {
                 <div className="text-xs text-gray-500">{l.firm || "-"}</div>
                 <div className="text-xs mt-1">
                   {(l.specialties || []).map((s) => (
-                    <span key={s} className="inline-block mr-1 px-2 py-0.5 bg-gray-100 rounded">
+                    <span
+                      key={s}
+                      className="inline-block mr-1 px-2 py-0.5 bg-gray-100 rounded"
+                    >
                       {s}
                     </span>
                   ))}
                 </div>
                 <div className="text-xs text-gray-600 mt-1">
-                  ⭐ {l.rating || 0} • {l.clients_served || 0} klien • Rp {l.rate_per_session || 0}/sesi
+                  ⭐ {l.rating || 0} • {l.clients_served || 0} klien • Rp{" "}
+                  {l.rate_per_session || 0}/sesi
                 </div>
               </div>
             </div>
